@@ -4,7 +4,9 @@ __author__ = "fraser"
 
 import sqlite3
 import time
+import xbmcvfs
 from datetime import datetime, timedelta, tzinfo
+from os import path
 
 try:
     import _pickle as cpickle
@@ -83,11 +85,13 @@ class Cache(object):
 
     def __init__(self, name=None):
         self.connection = None
+        if not xbmcvfs.exists(name):
+            xbmcvfs.mkdirs(path.dirname(name))
         if name:
             self._open(name)
 
     def get(self, uri):
-        # type: (str) -> Union[dict, None]
+        # type: (str) -> Union[sqlite3.Row, None]
         """Retrieve a partial entry from the cache"""
         query = ("select blob, last_modified, etag, immutable, "
                  "case"
