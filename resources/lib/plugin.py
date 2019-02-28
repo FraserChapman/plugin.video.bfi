@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Main plugin file - Handles the various routes"""
 
-__author__ = "fraser"
+__author__ = "fraser.chapman@gmail.com"
 
 import routing
 import xbmc
@@ -20,21 +20,18 @@ MEDIA_URI = "special://home/addons/{}/resources/media/".format(ADDON_ID)
 PLAYER_ID_ATTR = "data-video-id"
 JIG = {
     "category": {
-        "card": ["div", "card"],
-        "action": ["a", "card__title__action"],
-        "title": ["a", "card__title__action"],
+        "card": ["div", "card--free"],
+        "title": ["h3", "card__title"],
         "plot": ["div", "card__description"],
         "meta": ["span", "card__info__item"]
     },
     "collection": {
-        "card": ["div", "collection-card"],
-        "action": ["a", "collection-card__title__action"],
-        "title": ["a", "collection-card__title__action"],
+        "card": ["div", "collection-card--free"],
+        "title": ["h3", "collection-card__title"],
         "plot": ["div", "collection-card__description"]
     },
     "the-cut": {
         "card": ["div", "c_card"],
-        "action": ["a", "c_card__image__action"],
         "title": ["h3", "c_card__title"],
         "plot": ["div", "c_card__footer__summary"]
     }
@@ -143,7 +140,7 @@ def settings():
 
 @plugin.route("/recent")
 def recent():
-    """Show recently viewed films setting config"""
+    """Show recently viewed films"""
     data = bfis.get_recent()
     for item in data:
         parts = item["uri"].split("/")[3:]
@@ -253,7 +250,7 @@ def show_category():
     url = bfis.get_page_url(href)
     html = bfis.get_html(url)
     for card in html.findAll(*JIG[key]["card"]):
-        action = card.find(*JIG[key]["action"])
+        action = card.find(["a", "card__action"])
         if action is None:
             continue
 
