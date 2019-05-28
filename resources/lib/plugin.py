@@ -85,11 +85,11 @@ def paginate(query, count, total, offset):
         add_menu_item(index, main_menu)
 
 
-@plugin.route("/clear/<id>")
-def clear(id):
-    if id == "cache" and ku.confirm():
+@plugin.route("/clear/<target>")
+def clear(target):
+    if target == "cache" and ku.confirm():
         bfis.cache_clear()
-    if id == "recent" and ku.confirm():
+    if target == "recent" and ku.confirm():
         bfis.recent_clear()
 
 
@@ -124,7 +124,7 @@ def index():
     if ku.get_setting_as_bool("show_search"):
         add_menu_item(search, 32007, {"menu": True}, ku.icon("search.png"))
     if ku.get_setting_as_bool("show_recent"):
-        add_menu_item(recent, 32021)
+        add_menu_item(recent, 32021, art=ku.icon("saved.png"))
     if ku.get_setting_as_bool("show_settings"):
         add_menu_item(settings, 32010, art=ku.icon("settings.png"), directory=False)
     xp.setPluginCategory(plugin.handle, ADDON_NAME)
@@ -158,7 +158,7 @@ def play_film():
     html = bfis.get_html(url)
     try:
         video_id = html.find(True, attrs={PLAYER_ID_ATTR: True})[PLAYER_ID_ATTR]
-    except (AttributeError, TypeError) as e:
+    except (AttributeError, TypeError):
         return False
     if video_id is not None:
         video_url = bfis.get_video_url(video_id)
@@ -229,7 +229,7 @@ def search():
             play_film,
             title,
             {"href": data.get("url")},
-            ku.art(data.get("image", ["Default.png"])[0]),
+            ku.art("", data.get("image", ["Default.png"])[0]),
             info,
             False)
     xp.setContent(plugin.handle, "videos")
@@ -264,14 +264,14 @@ def show_category():
                 genre, year, duration = card.find_all(*JIG[key]["meta"], limit=3)
                 info["genre"] = genre.text.encode("utf-8")
                 info["year"] = bfis.text_to_int(year.text.encode("utf-8"))
-                info["duration"] = bfis.text_to_int(duration.text.encode("utf-8"))
+                info["duration"] = bfis.text_to_int(duration.text.encode("utf-8")) * 60  # duration is min
             except (ValueError, TypeError):
                 pass
         add_menu_item(
             show_category if is_dir else play_film,
             title,
             {"href": action["href"], "title": title},
-            ku.art(card.find("img").attrs),
+            ku.art(bfis.BFI_URI, card.find("img").attrs),
             info,
             is_dir
         )
