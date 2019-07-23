@@ -8,44 +8,64 @@ import requests
 from bs4 import BeautifulSoup
 
 from . import kodiutils as ku
-from .cache import Cache, datetime_to_httpdate
+from cache import Cache, Store, conditional_headers
 
 BFI_URI = "https://player.bfi.org.uk/"
+THE_CUT_URI = "{}the-cut".format(BFI_URI)
 SEARCH_URI = "https://search-es.player.bfi.org.uk/prod-films/_search"
 PLAYER_URI = "https://player.ooyala.com/hls/player/all/"
-RECENT_URI = "https://player.bfi.org.uk/free/film/watch"
 
 STREAM_BANDWIDTH = ku.get_setting("stream_bandwidth")
 SEARCH_MAX_RESULTS = ku.get_setting_as_int("search_max_results")
 SEARCH_DEFAULT_OPERATOR = ku.get_setting("search_default_operator")
 SEARCH_LENIENT = ku.get_setting_as_bool("search_lenient")
 SEARCH_SAVED = ku.get_setting_as_bool("search_saved")
+RECENT_SAVED = ku.get_setting_as_bool("recent_saved")
 SEARCH_TIMEOUT = 60
-SAVED_SEARCH = "app://saved-searches"
+
+searches = Store("app://saved-searches")
+recents = Store("app://recently-viewed")
 
 
 def query_encode(query):
-    # type (str) -> str
+    # type: (str) -> str
+    """Replaces " " for "+" in query"""
     return query.replace(" ", "+")
 
 
 def query_decode(query):
-    # type (str) -> str
+    # type: (str) -> str
+    """Replaces "+" for " " in query"""
     return query.replace("+", " ")
 
 
 def html_to_text(text):
-    # type (str) -> str
+    # type: (str) -> str
     soup = BeautifulSoup(text, "html.parser")
     return '\n'.join(soup.stripped_strings)
 
 
-def add_cache_headers(headers, cached):
-    # type: (dict, dict) -> None
-    if cached["etag"] is not None:
-        headers["If-None-Match"] = cached["etag"]
-    if cached["last_modified"] is not None:
-        headers["If-Modified-Since"] = datetime_to_httpdate(cached["last_modified"])
+def duration_to_seconds(text):
+    # type: (str) -> int
+    """Attempts to covert string of digits representing minutes to seconds"""
+    try:
+        seconds = int("".join(x for x in text if x.isdigit())) * 60
+        return seconds if seconds else 60
+    except ValueError:
+        return 0
+
+
+def parse_meta_info(meta, info):
+    # type: (list, dict) -> None
+    """Attempts to append year, duration and genre items to given info"""
+    info["mediatype"] = "video"
+    for item in meta:
+        if item.text.isdigit():
+            info["year"] = item.text
+        elif "mins" in item.text:
+            info["duration"] = duration_to_seconds(item.text)
+        else:
+            info["genre"].append(item.text)
 
 
 def get_search_url(query, offset):
@@ -59,7 +79,7 @@ def get_search_url(query, offset):
         SEARCH_DEFAULT_OPERATOR)
 
 
-def get_video_url(video_id):
+def get_m3u8_url(video_id):
     # type: (str) -> str
     """Gets a full URL to a m3u8 playlist file"""
     return "{}{}.m3u8?targetBitrate={}&ssl=true".format(PLAYER_URI, video_id, STREAM_BANDWIDTH)
@@ -68,97 +88,13 @@ def get_video_url(video_id):
 def get_page_url(href):
     # type: (str) -> str
     """Gets a full URL to a BFI html page"""
-    return "{}{}".format(BFI_URI, href.lstrip("/"))
-
-
-def save(searches):
-    # type: (list) -> None
-    with Cache() as c:
-        c.set(SAVED_SEARCH, json.dumps(searches, ensure_ascii=False), None)
-
-
-def retrieve():
-    # type: () -> list
-    """Gets list of saved search strings"""
-    with Cache() as c:
-        data = c.get(SAVED_SEARCH)
-        return json.loads(data["blob"]) if data else []
-
-
-def remove(query):
-    # type: (str) -> bool
-    """Removes a query from the saved search list"""
-    if not query or not SEARCH_SAVED:
-        return False
-    searches = retrieve()
-    if query in searches:
-        searches.remove(query)
-        save(searches)
-        return True
-    return False
-
-
-def append(query):
-    # type: (str) -> bool
-    """
-    Adds a query to the saved search list
-    unless the query is equal to False or
-    SEARCH_SAVED settings is False
-    """
-    if not query or not SEARCH_SAVED:
-        return False
-    searches = retrieve()
-    if query not in searches:
-        searches.append(query)
-        save(searches)
-        return True
-    return False
-
-
-def get_recent():
-    # type: () -> list
-    with Cache() as c:
-        data = c.domain(RECENT_URI)
-        return data if data is not None else []
+    return href if href.startswith("http") else "{}{}".format(BFI_URI, href.lstrip("/"))
 
 
 def cache_clear():
     # type: () -> None
     with Cache() as c:
         c.clear()
-
-
-def recent_clear():
-    # type: () -> None
-    with Cache() as c:
-        data = c.domain(RECENT_URI, 99999)
-        for item in data:
-            c.delete(item["uri"])
-
-
-def get_m3u8(url):
-    # type: (str) -> str
-    """
-    Gets the cached m3u8 URL from a live video URL
-    NB: returns URL rather than playlist data
-    """
-    headers = {
-        "Accept": "application/x-mpegURL",
-        "Accept-encoding": "gzip"
-    }
-    with Cache() as c:
-        cached = c.get(url)
-        if cached:
-            add_cache_headers(headers, cached)
-            if cached["fresh"]:
-                return url
-        r = requests.get(url, headers=headers, timeout=SEARCH_TIMEOUT)
-        if 200 == r.status_code:
-            c.set(url, r.content, r.headers)
-            return url
-        if 304 == r.status_code:
-            c.touch(url, r.headers)
-            return url
 
 
 def get_html(url):
@@ -171,7 +107,7 @@ def get_html(url):
     with Cache() as c:
         cached = c.get(url)
         if cached:
-            add_cache_headers(headers, cached)
+            headers.update(conditional_headers(cached))
             if cached["fresh"]:
                 return BeautifulSoup(cached["blob"], "html.parser")
         r = requests.get(url, headers=headers, timeout=SEARCH_TIMEOUT)
@@ -180,9 +116,9 @@ def get_html(url):
             # pre-cache clean-up
             for x in soup(["script", "style"]):
                 x.extract()
-            c.set(url, str(soup), r.headers)
+            c.set(url, r.content, r.headers)
             return soup
-        if 304 == r.status_code:
+        elif 304 == r.status_code:
             c.touch(url, r.headers)
             return BeautifulSoup(cached["blob"], "html.parser")
 
@@ -197,13 +133,13 @@ def get_json(url):
     with Cache() as c:
         cached = c.get(url)
         if cached:
-            add_cache_headers(headers, cached)
+            headers.update(conditional_headers(cached))
             if cached["fresh"]:
                 return json.loads(cached["blob"])
         r = requests.get(url, headers=headers, timeout=SEARCH_TIMEOUT)
         if 200 == r.status_code:
             c.set(url, r.json(), r.headers)
             return r.json()
-        if 304 == r.status_code:
+        elif 304 == r.status_code:
             c.touch(url, r.headers)
             return json.loads(cached["blob"])

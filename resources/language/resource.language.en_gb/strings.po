@@ -105,9 +105,21 @@ msgid "Recently Viewed"
 msgstr ""
 
 msgctxt "#32022"
-msgid "Clear Recent"
+msgid "Clear Recently Viewed"
 msgstr ""
 
 msgctxt "#32023"
 msgid "Are you sure?"
+msgstr ""
+
+msgctxt "#32024"
+msgid "Save Recently Viewed"
+msgstr ""
+
+msgctxt "#32025"
+msgid "Clear Searches"
+msgstr ""
+
+msgctxt "#32026"
+msgid "Kermode Introduces"
 msgstr ""
