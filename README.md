@@ -32,7 +32,7 @@ All art work, code and data is provided under an [MIT License](https://github.co
 
 Except the two images icon.png and fanart.jpg
 
-![icon.png](https://pbs.twimg.com/profile_images/529572873057226753/LLtBMR0G_400x400.png)
+![image](https://github.com/user-attachments/assets/788d32c8-3239-4919-82ea-9da61daffc58)
 
 [Twitter - Public Domain / Fair use](https://twitter.com/bfiplayer)
 
@@ -40,4 +40,4 @@ Except the two images icon.png and fanart.jpg
 
 [Maria Giulia Tolotti - Creative Commons Attribution-Share Alike 3.0 Unported](https://commons.wikimedia.org/wiki/File:BFI_Southbank0182.JPG)
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4442ff5c7e844d6b940bca23a6054d88)](https://www.codacy.com/app/FraserChapman/plugin.video.bfi?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FraserChapman/plugin.video.bfi&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/d5b63c3d55e548008725283627d6474c)](https://app.codacy.com/gh/FraserChapman/plugin.video.bfi/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
